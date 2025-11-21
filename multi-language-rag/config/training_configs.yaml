@@ -1,0 +1,71 @@
+# Training configurations for cross-lingual QA experiments
+
+# Global training settings
+global:
+  output_dir: "./models"
+  logging_dir: "./logs"
+  seed: 42
+  save_total_limit: 3
+  save_steps: 1000
+  eval_steps: 500
+  logging_steps: 100
+  evaluation_strategy: "steps"
+  save_strategy: "steps"
+  load_best_model_at_end: true
+  metric_for_best_model: "f1"
+  greater_is_better: true
+
+# Zero-shot training (English SQuAD 2.0)
+zero_shot:
+  train_batch_size: 16
+  eval_batch_size: 32
+  gradient_accumulation_steps: 2
+  num_train_epochs: 3
+  warmup_ratio: 0.1
+  learning_rate_scheduler_type: "linear"
+  dataloader_num_workers: 4
+  dataloader_pin_memory: true
+  remove_unused_columns: false
+  label_smoothing_factor: 0.0
+
+# Few-shot training (target languages)
+few_shot:
+  train_batch_size: 8
+  eval_batch_size: 16
+  gradient_accumulation_steps: 4
+  num_train_epochs: 10
+  warmup_ratio: 0.1
+  learning_rate_scheduler_type: "linear"
+  dataloader_num_workers: 2
+  dataloader_pin_memory: true
+  remove_unused_columns: false
+  label_smoothing_factor: 0.0
+  early_stopping_patience: 3
+
+
+new:
+  train_batch_size: 8
+  eval_batch_size: 16
+  gradient_accumulation_steps: 4
+  num_train_epochs: 10
+  warmup_ratio: 0.1
+  learning_rate_scheduler_type: "linear"
+  dataloader_num_workers: 2
+  dataloader_pin_memory: true
+  remove_unused_columns: false
+  label_smoothing_factor: 0.0
+  early_stopping_patience: 3
+
+# Few-shot sampling configurations
+few_shot_sizes: [1, 5, 10]      # Number of examples per language
+seeds: [42, 123, 456]  # Multiple random seeds for robustness
+sampling_strategy: "random"  # Options: random, diverse, stratified
+max_samples_per_language: 50  # Maximum samples to consider for selection
+
+# Data processing
+data:
+  max_train_samples: null  # Use all available
+  max_eval_samples: null   # Use all available
+  preprocessing_num_workers: 4
+  overwrite_cache: false
+  cache_dir: "./cache"

@@ -1,0 +1,90 @@
+# Experiment configurations for cross-lingual QA evaluation
+
+# Language configurations
+languages:
+  # XQuAD languages (11 total)
+  xquad_languages:
+    - "en"  # English
+    - "es"  # Spanish
+    - "de"  # German
+    - "el"  # Greek
+    - "ru"  # Russian
+    - "tr"  # Turkish
+    - "ar"  # Arabic
+    - "vi"  # Vietnamese
+    - "th"  # Thai
+    - "zh"  # Chinese
+    - "hi"  # Hindi
+  
+  # Language families for analysis
+  language_families:
+    germanic: ["en", "de"]
+    romance: ["es"]
+    slavic: ["ru"]
+    hellenic: ["el"]
+    turkic: ["tr"]
+    semitic: ["ar"]
+    austroasiatic: ["vi"]
+    tai: ["th"]
+    sino_tibetan: ["zh"]
+    indo_aryan: ["hi"]
+
+# Dataset configurations
+datasets:
+  squad:
+    name: "squad_v2"
+    split: "train"
+    source_language: "en"
+    max_samples: null  # Use all available
+    
+  xquad:
+    name: "xquad"
+    languages: ["en", "es", "de", "el", "ru", "tr", "ar", "vi", "th", "zh", "hi"]
+    split: "validation"
+    max_samples_per_language: null  # Use all available
+
+# Evaluation configurations
+evaluation:
+  metrics:
+    - "exact_match"
+    - "f1"
+    - "bleu"  # For T5 generated answers
+    - "rouge"  # For T5 generated answers
+  
+  # Statistical significance testing
+  significance_testing:
+    method: "wilcoxon"  # Options: ttest, wilcoxon
+    alpha: 0.05
+    multiple_comparison_correction: "bonferroni"
+  
+  # Cross-lingual transfer analysis
+  transfer_analysis:
+    compute_transfer_matrix: true
+    correlation_analysis: true
+    linguistic_distance_analysis: true
+
+# Experiment tracking
+tracking:
+  use_wandb: true
+  project_name: "cross-lingual-qa"
+  experiment_name: "mbert-vs-mt5"
+  tags: ["cross-lingual", "qa", "mbert", "mt5", "zero-shot", "few-shot"]
+  
+  # Local logging fallback
+  local_logging: true
+  log_dir: "./logs"
+  save_predictions: true
+  predictions_dir: "./results/predictions"
+
+# Output configurations
+output:
+  results_dir: "./results"
+  tables_dir: "./results/tables"
+  plots_dir: "./results/plots"
+  reports_dir: "./results/reports"
+  
+  # File formats
+  save_formats:
+    tables: ["csv", "json"]
+    plots: ["png", "pdf"]
+    models: ["pytorch", "safetensors"]
