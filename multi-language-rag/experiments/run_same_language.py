@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-"""
-CLI script for running the same language cross-lingual QA experiments.
-"""
 
 import argparse
 import yaml
@@ -17,6 +13,7 @@ from src.utils.device_utils import DeviceManager
 
 
 def main():
+    #从命令行传入参数
     parser = argparse.ArgumentParser(description='Run the same language cross-lingual QA experiments')
     
     parser.add_argument('--config', type=str, default='config/experiment_configs.yaml',
@@ -53,10 +50,10 @@ def main():
     with open(args.training_config, 'r') as f:
         training_config = yaml.safe_load(f)
     
-    # Combine configurations
+    # 将参数结合在一起
     config = {
         **model_config,
-        **training_config['new'],
+        **training_config['same'],
         **experiment_config,
         'output_dir': args.output_dir,
         'cache_dir': args.cache_dir,
@@ -66,16 +63,17 @@ def main():
         "dataset_path": args.dataset_path
     }
     
-    # Override languages if specified
+    #指定语言
     if args.languages:
         config['languages'] = args.languages
     
-    # Initialize device manager
+    # 初始化设备
     device_manager = DeviceManager(config)
     print(f"Using device: {device_manager.get_device()}")
     
-    # Run experiments
+    # 跑实验
     print(f"Starting the same language experiments")
+    print(args.languages)
     results = run_same_comparison(
         config=config,
         languages=args.languages,
