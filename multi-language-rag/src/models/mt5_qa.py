@@ -38,10 +38,6 @@ class MT5QAModel(BaseQAModel):
             # Load tokenizer
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             
-            # Set pad token if not exists
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-            
             # Load model
             self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name)
             
@@ -69,10 +65,23 @@ class MT5QAModel(BaseQAModel):
         Returns:
             Dictionary containing logits and other outputs
         """
+        print(input_ids.shape, attention_mask.shape,labels.shape)
+        print(self.tokenizer.decode(input_ids[0], skip_special_tokens=False))
+        print(self.tokenizer.decode(torch.where(labels[0]==-100, self.tokenizer.pad_token_id, labels[0]),
+                            skip_special_tokens=False))
+
         if self.model is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
-        
         # Get model outputs
+        for name, param in self.model.named_parameters():
+            if torch.isnan(param).any():
+                print("!! NaN in param:", name)
+                return True
+            if torch.isinf(param).any():
+                print("!! Inf in param:", name)
+                return True
+        print("No NaN/Inf in model parameters.")
+        
         outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -81,10 +90,14 @@ class MT5QAModel(BaseQAModel):
             return_dict=True
         )
         
+        print("loss:", outputs.loss.item())
+        print("logits has nan:", torch.isnan(outputs.logits).any().item())
+        print("logits has inf:", torch.isinf(outputs.logits).any().item())
+        print("logits max:", outputs.logits.max().item(), "min:", outputs.logits.min().item())
         return {
             "logits": outputs.logits,
             "loss": outputs.loss,
-            "hidden_states": outputs.hidden_states,
+            "hidden_states": outputs.encoder_hidden_states,
             "decoder_hidden_states": outputs.decoder_hidden_states
         }
     
@@ -231,6 +244,7 @@ class MT5QAModel(BaseQAModel):
         Returns:
             Loss tensor
         """
+        
         outputs = self.forward(input_ids, attention_mask, labels=labels)
         return outputs["loss"]
     

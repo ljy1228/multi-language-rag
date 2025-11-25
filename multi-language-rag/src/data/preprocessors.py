@@ -20,6 +20,7 @@ class QAExample:
     question: str
     context: str
     answer: str
+    translated_answer: str
     answer_start: Optional[int] = None
     language: Optional[str] = None
     is_impossible: bool = False
@@ -100,7 +101,7 @@ class QATokenizer:
         question = TextNormalizer.normalize_text(example.question)
         context = TextNormalizer.normalize_text(example.context)
         answer = TextNormalizer.normalize_text(example.answer)
-        
+        context = context + "please answer the question with " + (example.language if example.language else "en") + " "
         # Tokenize
         tokenized = self.tokenizer(
             question,
@@ -146,9 +147,7 @@ class QATokenizer:
             "input_ids": tokenized["input_ids"],
             "attention_mask": tokenized["attention_mask"],
             "start_positions": start_positions,
-            "end_positions": end_positions,
-            "overflow_to_sample_mapping": tokenized.get("overflow_to_sample_mapping", [0] * len(tokenized["input_ids"])),
-            "offset_mapping": tokenized["offset_mapping"]
+            "end_positions": end_positions
         }
     
     def _tokenize_for_t5(self, example: QAExample) -> Dict[str, Any]:
@@ -156,33 +155,46 @@ class QATokenizer:
         # Normalize text
         question = TextNormalizer.normalize_text(example.question)
         context = TextNormalizer.normalize_text(example.context)
-        answer = TextNormalizer.normalize_text(example.answer)
-        
-        # Format as text-to-text
-        input_text = f"question: {question} context: {context}"
-        
-        # Tokenize input
+        answer = TextNormalizer.normalize_text(example.translated_answer)
+        lang = example.language if example.language else "en"
+
+        # ========= Correct T5 format =========
+        # Use newline and ":" formatting
+        input_text = (
+            f"question: {question}\n"
+            f"context: {context}\n"
+            f"answer in {lang}:"
+        )
+
+        # Tokenize source
         input_tokenized = self.tokenizer(
             input_text,
             truncation=True,
             max_length=self.max_length,
             padding="max_length",
-            return_tensors="pt"
+            return_tensors="pt",
         )
-        
+
         # Tokenize target
         target_tokenized = self.tokenizer(
             answer,
             truncation=True,
             max_length=self.max_target_length,
             padding="max_length",
-            return_tensors="pt"
+            return_tensors="pt",
         )
+
+        labels = target_tokenized["input_ids"].squeeze(0)
         
+        # Pad → -100
+        pad_id = self.tokenizer.pad_token_id
+        labels[labels == pad_id] = -100
+
+
         return {
-            "input_ids": input_tokenized["input_ids"].squeeze(),
-            "attention_mask": input_tokenized["attention_mask"].squeeze(),
-            "labels": target_tokenized["input_ids"].squeeze()
+            "input_ids": input_tokenized["input_ids"].squeeze(0),
+            "attention_mask": input_tokenized["attention_mask"].squeeze(0),
+            "labels": labels
         }
     
     def batch_tokenize(self, examples: List[QAExample], model_type: str = "bert") -> Dict[str, List[Any]]:
@@ -196,14 +208,13 @@ class QATokenizer:
         Returns:
             Batch tokenized data
         """
+        print(model_type)
         batch_data = {
             "input_ids": [],
             "attention_mask": [],
             "start_positions": [],
             "end_positions": [],
             "labels": [],
-            "overflow_to_sample_mapping": [],
-            "offset_mapping": []
         }
         
         for example in examples:
@@ -257,9 +268,10 @@ class DataPreprocessor:
                 qa_example = QAExample(
                     question=example['question'],
                     context=example['context'],
-                    answer=example.get('answers', {}).get('text', [''])[0] if 'answers' in example and example.get('answers', {}).get('text') else example.get('answer', ''),
-                    answer_start=example.get('answers', {}).get('answer_start', [None])[0] if 'answers' in example and example.get('answers', {}).get('answer_start') else example.get('answer_start'),
-                    language=example.get('language', 'en'),
+                    answer=example.get('answers')[0]["text"],
+                    translated_answer=example.get('translated_answers')[0]["text"],
+                    answer_start=example.get('answers')[0]["answer_start"],
+                    language=example.get('lang', 'en'),
                     is_impossible=example.get('is_impossible', False),
                     id=example.get('id', '')
                 )
@@ -289,9 +301,10 @@ class DataPreprocessor:
         for key, values in tokenized_data.items():
             if values:  # Only add non-empty lists
                 if key in ["input_ids", "attention_mask", "labels"]:
-                    dataset_dict[key] = torch.tensor(values, dtype=torch.long)
+                    print(len(values))
+                    dataset_dict[key] = torch.stack(values).long()
                 elif key in ["start_positions", "end_positions"]:
-                    dataset_dict[key] = torch.tensor(values, dtype=torch.long)
+                    dataset_dict[key] = torch.stack(values).long()
                 else:
                     dataset_dict[key] = values
         

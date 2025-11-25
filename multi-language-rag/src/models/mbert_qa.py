@@ -74,6 +74,7 @@ class MBertQAModel(BaseQAModel):
         self.model_config = QAModelConfig.from_dict(config)
         self.qa_head = None
         
+        
         logger.info(f"Initialized mBERT QA model: {model_name}")
     
     def load_model(self):
@@ -126,6 +127,7 @@ class MBertQAModel(BaseQAModel):
         last_hidden_state = outputs.last_hidden_state
         
         # Get QA logits
+        self.qa_head.to("cuda")
         qa_logits = self.qa_head(last_hidden_state)
         
         # Split into start and end logits
